@@ -1,0 +1,138 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 0.1 Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      return data.email is string 
+        && data.email.size() <= 256
+        && data.createdAt == request.time;
+    }
+
+    function isValidMoodLog(data) {
+      return data.mood is string 
+        && data.mood.size() <= 50
+        && data.intensity is int
+        && data.intensity >= 1 && data.intensity <= 10
+        && (data.note == null || (data.note is string && data.note.size() <= 1000))
+        && data.timestamp == request.time
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidJournalEntry(data) {
+      return data.mood is string
+        && data.content is string && data.content.size() <= 5000
+        && data.date == request.time
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidCalendarEvent(data) {
+      return data.title is string && data.title.size() <= 200
+        && data.date is string && data.date.size() <= 20
+        && data.familyMember is string
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidRoutine(data) {
+      return data.title is string && data.title.size() <= 100
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidRoutineTask(data) {
+      return data.title is string && data.title.size() <= 100
+        && data.routineId is string
+        && data.userId == request.auth.uid;
+    }
+
+    // --- Match Groups ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) 
+        && incoming().email == existing().email // Immutable email
+        && incoming().createdAt == existing().createdAt; // Immutable creation time
+
+      match /mood_logs/{logId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMoodLog(incoming());
+        allow update, delete: if isOwner(userId);
+      }
+
+      match /journal_entries/{entryId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidJournalEntry(incoming());
+        allow update: if isOwner(userId) 
+          && isValidJournalEntry(incoming())
+          && incoming().date == existing().date; // Immutable date
+        allow delete: if isOwner(userId);
+      }
+
+      match /calendar_events/{eventId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCalendarEvent(incoming());
+        allow update: if isOwner(userId) 
+          && isValidCalendarEvent(incoming())
+          && (
+            // Action: Edit details
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'date', 'familyMember', 'category', 'color'])
+          );
+        allow delete: if isOwner(userId);
+      }
+
+      match /routines/{routineId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRoutine(incoming());
+        allow update: if isOwner(userId) 
+          && incoming().userId == existing().userId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'active']);
+        allow delete: if isOwner(userId);
+
+        match /tasks/{taskId} {
+          allow list: if isOwner(userId);
+          allow get: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRoutineTask(incoming());
+          allow update: if isOwner(userId) 
+            && incoming().routineId == existing().routineId
+            && (
+              // Action: Toggle completion
+              incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'lastCompleted'])
+            );
+          allow delete: if isOwner(userId);
+        }
+      }
+    }
+  }
+}

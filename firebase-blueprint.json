@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stored user preferences and identity mapping.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "onboardingComplete": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "MoodLog": {
+      "title": "Flow Log",
+      "description": "Recording of emotional state and intensity.",
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string" },
+        "intensity": { "type": "integer" },
+        "note": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["mood", "intensity", "timestamp", "userId"]
+    },
+    "JournalEntry": {
+      "title": "Reflections Entry",
+      "description": "Journal entry with associated prompt and mood.",
+      "type": "object",
+      "properties": {
+        "mood": { "type": "string" },
+        "content": { "type": "string" },
+        "prompt": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["mood", "content", "date", "userId"]
+    },
+    "CalendarEvent": {
+      "title": "Family Hub Event",
+      "description": "Task or event shared within the family context.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "familyMember": { "type": "string" },
+        "category": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "date", "familyMember", "userId"]
+    },
+    "Routine": {
+      "title": "Daily Rhythm",
+      "description": "A collection of tasks for a specific part of the day.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "userId": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["title", "userId"]
+    },
+    "RoutineTask": {
+      "title": "Habit Task",
+      "description": "An individual task within a routine.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "frequency": { "type": "string" },
+        "routineId": { "type": "string" },
+        "userId": { "type": "string" },
+        "lastCompleted": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "routineId", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Personal profiles and settings."
+    },
+    "/users/{userId}/mood_logs/{logId}": {
+      "schema": "MoodLog",
+      "description": "User's emotional history."
+    },
+    "/users/{userId}/journal_entries/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "User's personal reflections."
+    },
+    "/users/{userId}/calendar_events/{eventId}": {
+      "schema": "CalendarEvent",
+      "description": "Family coordination tasks."
+    },
+    "/users/{userId}/routines/{routineId}": {
+      "schema": "Routine",
+      "description": "Defined habit collections."
+    },
+    "/users/{userId}/routines/{routineId}/tasks/{taskId}": {
+      "schema": "RoutineTask",
+      "description": "Individual tasks tracking."
+    }
+  }
+}
